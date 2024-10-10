@@ -3,14 +3,22 @@ import re
 from collections import Counter
 import asyncio
 import aiohttp
+import threading
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
 def clean_text(comment_text, punctuation=True):
-    comment_text = comment_text.replace("&quot;", " ").replace("<p>", " ").replace("&#x27;", " ")
+    soup = BeautifulSoup(comment_text, "html.parser")
+    for data in soup(['style', 'script']):
+        # Remove tags
+        data.decompose()
+    text = ' '.join(soup.stripped_strings)
+    text = re.sub(u'[,\u2019\u2122\u201c\u201d\u2026]', '', text)
+    return text
     if not punctuation:
         comment_text = re.sub(r'[^\w\s]', '', comment_text)
-    return comment_text
+    return text
 
 async def access_HackerNews(session, url):
     async with session.get(url) as response:
@@ -88,4 +96,4 @@ async def get_most_used_words_all_comments():
     return jsonify([word[0] for word in c])
 
 if __name__=='__main__':
-    app.run()
+    app.run(threaded = True)
